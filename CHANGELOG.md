@@ -6,5 +6,3 @@
 ### Features
 
 * Add case sensitivity option for path matching ([6c6060c](https://github.com/php-internal/path/commit/6c6060c0f15383983790c99be288d7a5969aae36))
-
-## Changelog
