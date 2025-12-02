@@ -12,7 +12,8 @@
 
 <br />
 
-
+A simple, type-safe PHP library for working with file system paths.
+It handles path normalization, manipulation, and cross-platform compatibility (Windows and Unix) so you don't have to worry about slashes and edge cases.
 
 ## Installation
 
@@ -27,3 +28,125 @@ composer require internal/path
 
 ## Usage
 
+### Creating paths
+
+```php
+use Internal\Path;
+
+// Create from string
+$path = Path::create('/var/www/app');
+$path = Path::create('src/helpers/utils.php');
+```
+
+### Joining paths
+
+```php
+$base = Path::create('/var/www');
+$full = $base->join('app', 'src', 'Controller.php');
+// Result: /var/www/app/src/Controller.php
+
+// Works with Path objects too
+$subdir = Path::create('logs');
+$logFile = $base->join($subdir, 'app.log');
+```
+
+### Working with path components
+
+```php
+$file = Path::create('/home/user/documents/report.pdf');
+
+$file->name();      // 'report.pdf'
+$file->stem();      // 'report'
+$file->extension(); // 'pdf'
+$file->parent();    // Path('/home/user/documents')
+```
+
+### Path checks
+
+```php
+$path = Path::create('config/app.php');
+
+$path->isAbsolute();  // false
+$path->isRelative();  // true
+$path->exists();      // checks if file/directory exists
+$path->isFile();      // checks if it's a file
+$path->isDir();       // checks if it's a directory
+$path->isWriteable(); // checks if writable
+```
+
+### Converting paths
+
+```php
+$relative = Path::create('src/Path.php');
+$absolute = $relative->absolute();
+// Result: /current/working/directory/src/Path.php
+
+// Use as string
+echo $path; // Path implements Stringable
+```
+
+### Pattern matching
+
+```php
+$path = Path::create('/var/www/app/Controller.php');
+$path->match('*.php');           // true
+$path->match('/var/www/*/Con*'); // true
+
+// Supports wildcards
+$path->match('file?.txt');       // matches file1.txt, fileA.txt, etc.
+$path->match('file[123].txt');   // matches file1.txt, file2.txt, file3.txt
+$path->match('test/*/*.php');    // matches test/any/file.php
+```
+
+## Edge cases and special handling
+
+The library handles common edge cases automatically:
+
+### Hidden files and multiple extensions
+
+```php
+// Hidden files (Unix-style)
+$hidden = Path::create('.gitignore');
+$hidden->stem();      // '.gitignore'
+$hidden->extension(); // 'gitignore'
+
+// Files with multiple dots
+$config = Path::create('app.config.json');
+$config->stem();      // 'app.config'
+$config->extension(); // 'json' (only the last extension)
+```
+
+### Windows paths
+
+```php
+// Automatically normalizes Windows backslashes
+$winPath = Path::create('C:\Users\Admin\Documents');
+echo $winPath; // 'C:/Users/Admin/Documents'
+
+// Windows drive letters are recognized as absolute
+Path::create('C:/Program Files')->isAbsolute(); // true
+```
+
+### Path normalization
+
+```php
+// Removes redundant separators
+Path::create('path//to///file.txt'); // 'path/to/file.txt'
+
+// Resolves . and .. segments
+Path::create('path/./to/../file.txt'); // 'path/file.txt'
+
+// Empty path becomes current directory
+Path::create(''); // '.'
+```
+
+### Safety checks
+
+```php
+// Cannot join absolute paths (prevents common mistakes)
+$base = Path::create('/var/www');
+$base->join('/etc/config'); // throws LogicException
+
+// Cannot navigate above root in absolute paths
+Path::create('/var/../../root'); // throws LogicException
+```
