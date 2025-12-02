@@ -13,4 +13,4 @@ infection.*            export-ignore
 tests                  export-ignore
 docs                   export-ignore
 resources              export-ignore
-CLAUDE.local.md        export-ignore
+CLAUDE.md              export-ignore
