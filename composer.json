@@ -1,0 +1,65 @@
+{
+    "name": "internal/path",
+    "description": "File path helper",
+    "license": "BSD-3-Clause",
+    "type": "library",
+    "keywords": [
+        "path",
+        "file",
+        "filesystem",
+        "helper"
+    ],
+    "authors": [
+        {
+            "name": "Aleksei Gagarin (roxblnfk)",
+            "homepage": "https://github.com/roxblnfk"
+        }
+    ],
+    "funding": [
+        {
+            "type": "boosty",
+            "url": "https://boosty.to/roxblnfk"
+        }
+    ],
+    "require": {
+        "php": ">=8.1"
+    },
+    "require-dev": {
+        "buggregator/trap": "^1.13",
+        "spiral/code-style": "^2.3.0",
+        "testo/testo": "^1.0@dev",
+        "vimeo/psalm": "^6.13"
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "autoload": {
+        "psr-4": {
+            "Internal\\Path\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Internal\\Path\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "cs:diff": "php-cs-fixer fix --dry-run -v --diff",
+        "cs:fix": "php-cs-fixer fix -v",
+        "infect": [
+            "@putenv XDEBUG_MODE=coverage",
+            "roave-infection-static-analysis-plugin --configuration=infection.json.dist"
+        ],
+        "infect:ci": [
+            "@putenv XDEBUG_MODE=coverage",
+            "roave-infection-static-analysis-plugin --ansi --configuration=infection.json.dist --logger-github --ignore-msi-with-no-mutations --only-covered"
+        ],
+        "psalm": "psalm",
+        "psalm:baseline": "psalm --set-baseline=psalm-baseline.xml",
+        "psalm:ci": "psalm --output-format=github --shepherd --show-info=false --stats --threads=4",
+        "refactor": "rector process --config=rector.php",
+        "refactor:ci": "rector process --config=rector.php --dry-run --ansi",
+        "test": [
+            "testo"
+        ]
+    }
+}
