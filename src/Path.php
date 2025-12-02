@@ -203,13 +203,21 @@ final class Path implements \Stringable
      *
      * @param non-empty-string|self $pattern The pattern to match against. Can be a string path or Path object.
      *        Will be converted to absolute path before matching.
+     * @param bool|null $caseSensitive Whether the match should be case-sensitive. If null, uses OS default:
+     *        case-insensitive on Windows, case-sensitive on Unix/Linux.
      *
      * @return bool True if the path matches the pattern, false otherwise.
      */
-    public function match(string|self $pattern): bool
+    public function match(string|self $pattern, ?bool $caseSensitive = null): bool
     {
+        // Use OS default: case-insensitive on Windows, case-sensitive on Unix
+        $caseSensitive ??= \DIRECTORY_SEPARATOR !== '\\';
+
         \is_string($pattern) and $pattern = self::create($pattern);
-        return \fnmatch((string) $pattern->absolute(), $this->absolute()->path, \FNM_NOESCAPE);
+
+        $flags = $caseSensitive ? \FNM_NOESCAPE : \FNM_NOESCAPE | \FNM_CASEFOLD;
+
+        return \fnmatch((string) $pattern->absolute(), $this->absolute()->path, $flags);
     }
 
     /**

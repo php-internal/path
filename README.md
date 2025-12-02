@@ -97,9 +97,12 @@ $path->match('file?.txt');       // matches file1.txt, fileA.txt, etc.
 $path->match('file[123].txt');   // matches file1.txt, file2.txt, file3.txt
 $path->match('test/*/*.php');    // matches test/any/file.php
 
-// Case sensitivity depends on the operating system
-// Windows: case-insensitive (File.TXT matches *.txt)
-// Unix/Linux: case-sensitive (File.TXT does NOT match *.txt)
+// Control case sensitivity with optional parameter
+$file = Path::create('File.TXT');
+$file->match('*.txt');              // OS default (case-insensitive on Windows, case-sensitive on Unix)
+$file->match('*.txt', false);       // case-insensitive (matches on any OS)
+$file->match('*.txt', true);        // case-sensitive (won't match - different case)
+$file->match('*.TXT', true);        // case-sensitive (matches - exact case)
 ```
 
 ## Edge cases and special handling

@@ -535,4 +535,66 @@ final class PathTest
             Assert::false($result, 'On Unix, match should be case-sensitive');
         }
     }
+
+    public function testMatchWithCaseSensitiveFlag(): void
+    {
+        // Arrange
+        $path = Path::create('Test/File.TXT')->absolute();
+        $pattern = 'test/file.txt';
+
+        // Act & Assert - case-sensitive matching
+        Assert::false($path->match($pattern, true), 'Should not match when case-sensitive is true');
+
+        // Act & Assert - case-insensitive matching
+        Assert::true($path->match($pattern, false), 'Should match when case-sensitive is false');
+    }
+
+    public function testMatchWithCaseSensitiveFlagExactCase(): void
+    {
+        // Arrange
+        $path = Path::create('Test/File.TXT')->absolute();
+        $patternExact = 'Test/File.TXT';
+        $patternLower = 'test/file.txt';
+
+        // Act & Assert - exact case with case-sensitive flag
+        Assert::true($path->match($patternExact, true), 'Should match exact case with case-sensitive flag');
+
+        // Act & Assert - different case with case-sensitive flag
+        Assert::false($path->match($patternLower, true), 'Should not match different case with case-sensitive flag');
+    }
+
+    public function testMatchCaseInsensitiveOnAllOS(): void
+    {
+        // Arrange
+        $path = Path::create('Documents/FILE.txt')->absolute();
+
+        // Act & Assert - force case-insensitive on any OS
+        Assert::true($path->match('*/file.TXT', false), 'Should match with case-insensitive flag');
+        Assert::true($path->match('*/FILE.txt', false), 'Should match with case-insensitive flag');
+        Assert::true($path->match('*/FiLe.TxT', false), 'Should match with case-insensitive flag');
+    }
+
+    public function testMatchCaseSensitiveOnAllOS(): void
+    {
+        // Arrange
+        $path = Path::create('Documents/report.PDF')->absolute();
+
+        // Act & Assert - force case-sensitive on any OS
+        Assert::true($path->match('*/report.PDF', true), 'Should match exact case');
+        Assert::false($path->match('*/report.pdf', true), 'Should not match different case');
+        Assert::false($path->match('*/REPORT.PDF', true), 'Should not match different case');
+    }
+
+    public function testMatchWithWildcardsAndCaseFlag(): void
+    {
+        // Arrange
+        $path = Path::create('src/Controller/UserController.php')->absolute();
+
+        // Act & Assert - wildcards with case-insensitive
+        Assert::true($path->match('*/controller/*.PHP', false), 'Wildcard should match case-insensitive');
+
+        // Act & Assert - wildcards with case-sensitive
+        Assert::false($path->match('*/controller/*.php', true), 'Should not match - Controller != controller');
+        Assert::true($path->match('*/Controller/*.php', true), 'Should match with correct case');
+    }
 }
