@@ -1,13 +1,17 @@
 {
     "name": "internal/path",
-    "description": "File path helper",
+    "description": "Type-safe, immutable file path library with cross-platform support and automatic normalization.",
     "license": "BSD-3-Clause",
     "type": "library",
     "keywords": [
         "path",
         "file",
         "filesystem",
-        "helper"
+        "helper",
+        "filepath",
+        "cross-platform",
+        "windows",
+        "unix"
     ],
     "authors": [
         {
@@ -25,8 +29,9 @@
         "php": ">=8.1"
     },
     "require-dev": {
-        "buggregator/trap": "^1.13",
-        "spiral/code-style": "^2.3.0",
+        "buggregator/trap": "^1.15",
+        "spiral/code-style": "^2.3.1",
+        "roxblnfk/unpoly": "^1.8.1",
         "testo/testo": "^1.0@dev",
         "vimeo/psalm": "^6.13"
     },
@@ -34,7 +39,7 @@
     "prefer-stable": true,
     "autoload": {
         "psr-4": {
-            "Internal\\Path\\": "src/"
+            "Internal\\": "src/"
         }
     },
     "autoload-dev": {
