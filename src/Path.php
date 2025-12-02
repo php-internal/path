@@ -209,7 +209,7 @@ final class Path implements \Stringable
     public function match(string|self $pattern): bool
     {
         \is_string($pattern) and $pattern = self::create($pattern);
-        return \fnmatch((string) $pattern->absolute(), $this->absolute()->path, \FNM_NOESCAPE | \FNM_CASEFOLD);
+        return \fnmatch((string) $pattern->absolute(), $this->absolute()->path, \FNM_NOESCAPE);
     }
 
     /**

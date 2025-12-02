@@ -96,6 +96,10 @@ $path->match('/var/www/*/Con*'); // true
 $path->match('file?.txt');       // matches file1.txt, fileA.txt, etc.
 $path->match('file[123].txt');   // matches file1.txt, file2.txt, file3.txt
 $path->match('test/*/*.php');    // matches test/any/file.php
+
+// Case sensitivity depends on the operating system
+// Windows: case-insensitive (File.TXT matches *.txt)
+// Unix/Linux: case-sensitive (File.TXT does NOT match *.txt)
 ```
 
 ## Edge cases and special handling
