@@ -12,8 +12,11 @@
 
 <br />
 
-A simple, type-safe PHP library for working with file system paths.
-It handles path normalization, manipulation, and cross-platform compatibility (Windows and Unix) so you don't have to worry about slashes and edge cases.
+A type-safe library for working with file system paths.
+Handles normalization, cross-platform compatibility, and all the edge cases with slashes and separators.
+
+Path is an immutable value object – all methods return new instances, so it's safe to use as a DTO,
+pass between layers, or store in your domain models without worrying about side effects.
 
 ## Installation
 

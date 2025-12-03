@@ -4,8 +4,35 @@ declare(strict_types=1);
 
 namespace Internal;
 
+/**
+ * Immutable value object for working with file system paths.
+ *
+ * Handles path normalization and manipulation across different operating systems.
+ * Paths are automatically normalized: `.` and `..` segments are resolved, duplicate
+ * separators are removed, and both `/` and `\` are accepted. Windows drive letters
+ * like `C:/Users` are properly recognized.
+ *
+ * This object is designed to be used as a DTO or value object throughout your application.
+ * All methods return new instances, making it safe to pass between layers, store in properties,
+ * or use as command/query parameters without worrying about unexpected mutations.
+ *
+ * ```
+ *  $path = Path::create('/var/www/app');
+ *  $full = $path->join('src', 'Controller.php');
+ *  echo $full; // '/var/www/app/src/Controller.php'
+ *
+ *  $file = Path::create('report.pdf');
+ *  $file->name();      // 'report.pdf'
+ *  $file->stem();      // 'report'
+ *  $file->extension(); // 'pdf'
+ * ```
+ */
 final class Path implements \Stringable
 {
+    /**
+     * Directory separator used internally.
+     * All paths are normalized to use forward slash regardless of OS.
+     */
     private const DS = '/';
 
     /**
@@ -203,8 +230,8 @@ final class Path implements \Stringable
      *
      * @param non-empty-string|self $pattern The pattern to match against. Can be a string path or Path object.
      *        Will be converted to absolute path before matching.
-     * @param bool|null $caseSensitive Whether the match should be case-sensitive. If null, uses OS default:
-     *        case-insensitive on Windows, case-sensitive on Unix/Linux.
+     * @param bool|null $caseSensitive Whether the match should be case-sensitive.
+     *        If null, uses OS default: case-insensitive on Windows, case-sensitive on Unix/Linux.
      *
      * @return bool True if the path matches the pattern, false otherwise.
      */
