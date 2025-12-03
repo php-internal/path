@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.0](https://github.com/php-internal/path/compare/1.1.1...1.2.0) (2025-12-03)
+
+
+### Features
+
+* Add base directory parameter to Path::absolute() method ([047cd51](https://github.com/php-internal/path/commit/047cd51151ac2e26f0f8741aced28234bf972160))
+
+
+### Documentation
+
+* Improve README and Path class documentation for clarity and usage examples ([b68afd0](https://github.com/php-internal/path/commit/b68afd0f97dab0f753ba9c668f26d645871fff26))
+
 ## [1.1.1](https://github.com/php-internal/path/compare/1.1.0...1.1.1) (2025-12-02)
 
 
