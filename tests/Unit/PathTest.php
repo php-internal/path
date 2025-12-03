@@ -52,6 +52,50 @@ final class PathTest
         yield 'pattern with no wildcards no match' => ['test/file.txt', 'test/other.txt', false];
     }
 
+    public static function provideAbsoluteWithCwd(): \Generator
+    {
+        $isWindows = \DIRECTORY_SEPARATOR === '\\';
+
+        yield 'relative path with absolute cwd' => [
+            'relativePath' => 'src/Controller.php',
+            'cwd' => $isWindows ? 'C:/Projects/myapp' : '/var/www/myapp',
+            'expected' => $isWindows ? 'C:/Projects/myapp/src/Controller.php' : '/var/www/myapp/src/Controller.php',
+        ];
+
+        yield 'relative path with relative cwd' => [
+            'relativePath' => 'lib/helpers.php',
+            'cwd' => 'project/app',
+            'usesCurrentDir' => true, // needs special handling
+        ];
+
+        yield 'absolute path with matching cwd' => [
+            'relativePath' => $isWindows ? 'C:/var/www/app/src/file.php' : '/var/www/app/src/file.php',
+            'cwd' => $isWindows ? 'C:/var/www/app' : '/var/www/app',
+            'expected' => $isWindows ? 'C:/var/www/app/src/file.php' : '/var/www/app/src/file.php',
+        ];
+
+        yield 'absolute path with parent matching cwd' => [
+            'relativePath' => $isWindows ? 'C:/var/www/app/src/deep/file.php' : '/var/www/app/src/deep/file.php',
+            'cwd' => $isWindows ? 'C:/var/www' : '/var/www',
+            'expected' => $isWindows ? 'C:/var/www/app/src/deep/file.php' : '/var/www/app/src/deep/file.php',
+        ];
+    }
+
+    public static function provideAbsoluteWithCwdErrors(): \Generator
+    {
+        $isWindows = \DIRECTORY_SEPARATOR === '\\';
+
+        yield 'absolute path with non-matching cwd' => [
+            'absolutePath' => $isWindows ? 'C:/var/www/app/src/file.php' : '/var/www/app/src/file.php',
+            'cwd' => $isWindows ? 'C:/home/user' : '/home/user',
+        ];
+
+        yield 'absolute path with partial matching cwd' => [
+            'absolutePath' => $isWindows ? 'C:/var/www/application/src/file.php' : '/var/www/application/src/file.php',
+            'cwd' => $isWindows ? 'C:/var/www/app' : '/var/www/app',
+        ];
+    }
+
     public function testCreateReturnsPathInstance(): void
     {
         // Arrange & Act
@@ -596,5 +640,42 @@ final class PathTest
         // Act & Assert - wildcards with case-sensitive
         Assert::false($path->match('*/controller/*.php', true), 'Should not match - Controller != controller');
         Assert::true($path->match('*/Controller/*.php', true), 'Should match with correct case');
+    }
+
+    #[DataProvider('provideAbsoluteWithCwd')]
+    public function testAbsoluteWithCwd(string $relativePath, string $cwd, ?string $expected = null, bool $usesCurrentDir = false): void
+    {
+        // Arrange
+        $path = Path::create($relativePath);
+
+        // Act
+        $result = $path->absolute($cwd);
+
+        // Assert
+        if ($usesCurrentDir) {
+            // Special case: relative cwd needs to be resolved against current directory
+            $currentCwd = \getcwd();
+            if ($currentCwd === false) {
+                return; // Skip if can't get cwd
+            }
+            $expectedCwd = Path::create($currentCwd)->join($cwd);
+            $expected = $expectedCwd->join($relativePath);
+            Assert::same((string) $expected, (string) $result);
+        } else {
+            Assert::same($expected, (string) $result);
+        }
+    }
+
+    #[DataProvider('provideAbsoluteWithCwdErrors')]
+    public function testAbsoluteWithCwdThrowsException(string $absolutePath, string $cwd): void
+    {
+        // Arrange
+        $path = Path::create($absolutePath);
+
+        // Assert
+        Expect::exception(\LogicException::class);
+
+        // Act
+        $path->absolute($cwd);
     }
 }

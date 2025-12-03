@@ -84,6 +84,10 @@ $relative = Path::create('src/Path.php');
 $absolute = $relative->absolute();
 // Result: /current/working/directory/src/Path.php
 
+// Resolve against custom directory
+$absolute = $relative->absolute('/var/www/app');
+// Result: /var/www/app/src/Path.php
+
 // Use as string
 echo $path; // Path implements Stringable
 ```
@@ -159,4 +163,21 @@ $base->join('/etc/config'); // throws LogicException
 
 // Cannot navigate above root in absolute paths
 Path::create('/var/../../root'); // throws LogicException
+```
+
+### Converting to absolute with custom base directory
+
+```php
+// Relative base directory is converted to absolute first
+$path = Path::create('lib/helper.php');
+$path->absolute('project/app'); // resolves 'project/app/lib/helper.php' against current directory first
+
+// Absolute path with matching base - validation passes
+$absolutePath = Path::create('/var/www/app/src/file.php');
+$absolutePath->absolute('/var/www/app'); // returns same path (validation OK)
+$absolutePath->absolute('/var/www');     // returns same path (validation OK - parent directory)
+
+// Absolute path with non-matching base - throws exception
+$absolutePath = Path::create('/var/www/app/file.php');
+$absolutePath->absolute('/home/user'); // throws LogicException - path doesn't start with base
 ```

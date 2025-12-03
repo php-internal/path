@@ -56,6 +56,8 @@ final class Path implements \Stringable
 
     /**
      * Join this path with one or more path components
+     *
+     * @psalm-immutable
      */
     public function join(self|string ...$paths): self
     {
@@ -119,6 +121,8 @@ final class Path implements \Stringable
 
     /**
      * Return the parent directory path
+     *
+     * @psalm-immutable
      */
     public function parent(): self
     {
@@ -210,16 +214,48 @@ final class Path implements \Stringable
 
     /**
      * Return a normalized absolute version of this path
+     *
+     * Edge cases:
+     * - If path is already absolute and $base is null: returns $this immediately
+     * - If path is already absolute and $base is provided: validates that the path starts
+     *   with $base, then returns $this. Throws LogicException if validation fails.
+     * - If path is relative: resolves against $base (or current working directory if $base is null)
+     * - If $base is a relative path: it will be converted to absolute against current working directory
+     *
+     * @param non-empty-string|null $base Base directory to resolve relative paths against.
+     *        When the path is already absolute, validates that it starts with this base directory.
+     *        If $base itself is relative, it will be converted to absolute first.
+     *
+     * @throws \LogicException If an absolute path doesn't start with the provided $base.
+     * @throws \RuntimeException If current working directory cannot be determined.
+     *
+     * @psalm-immutable
      */
-    public function absolute(): self
+    public function absolute(?string $base = null): self
     {
-        if ($this->isAbsolute()) {
+        if ($this->isAbsolute() && $base === null) {
             return $this;
         }
 
-        $cwd = \getcwd();
-        $cwd === false and throw new \RuntimeException('Cannot get current working directory.');
-        return self::create($cwd . self::DS . $this->path);
+        $base ??= \getcwd();
+        $base === false and throw new \RuntimeException('Cannot get current working directory.');
+        $normalizedCwd = self::create($base)->absolute();
+
+        if ($this->isAbsolute()) {
+            $this->path === $normalizedCwd->path
+            or \str_starts_with($this->path, $normalizedCwd->path . self::DS)
+            or throw new \LogicException(
+                \sprintf(
+                    'Cannot resolve absolute path `%s` against `%s`: path does not start with the given directory.',
+                    $this->path,
+                    $normalizedCwd->path,
+                ),
+            );
+
+            return $this;
+        }
+
+        return $normalizedCwd->join($this);
     }
 
     /**
@@ -262,6 +298,8 @@ final class Path implements \Stringable
      * Check if a path is absolute.
      *
      * @param non-empty-string $path A normalized path.
+     *
+     * @pure
      */
     private static function _isAbsolute(string $path): bool
     {
@@ -272,6 +310,8 @@ final class Path implements \Stringable
      * Normalize a path by converting directory separators and resolving special path segments.
      *
      * @return non-empty-string
+     *
+     * @psalm-pure
      */
     private static function normalizePath(string $path): string
     {
