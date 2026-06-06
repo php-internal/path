@@ -32,8 +32,8 @@
         "buggregator/trap": "^1.15",
         "spiral/code-style": "^2.3.1",
         "roxblnfk/unpoly": "^1.8.1",
-        "testo/testo": "^1.0@dev",
-        "vimeo/psalm": "^6.13"
+        "vimeo/psalm": "^6.13",
+        "testo/testo": "^0.10.17"
     },
     "minimum-stability": "dev",
     "prefer-stable": true,
