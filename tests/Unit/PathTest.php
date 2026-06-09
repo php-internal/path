@@ -6,9 +6,14 @@ namespace Internal\Path\Tests\Unit;
 
 use Internal\Path;
 use Testo\Assert;
+use Testo\Codecov\Covers;
+use Testo\Core\Exception\SkipTest;
+use Testo\Data\DataProvider;
 use Testo\Expect;
-use Testo\Sample\DataProvider;
+use Testo\Test;
 
+#[Test]
+#[Covers(Path::class)]
 final class PathTest
 {
     public static function providePathsForAbsoluteDetection(): \Generator
@@ -98,289 +103,220 @@ final class PathTest
 
     public function testCreateReturnsPathInstance(): void
     {
-        // Arrange & Act
         $path = Path::create('test/path');
 
-        // Assert
-        Assert::InstanceOf(Path::class, $path);
+        Assert::instanceOf($path, Path::class);
     }
 
     public function testCreateWithEmptyPathReturnsCurrentDirectory(): void
     {
-        // Arrange & Act
         $path = Path::create('');
 
-        // Assert
-        Assert::same('.', (string) $path);
+        Assert::same((string) $path, '.');
     }
 
     public function testCreateNormalizesDirectorySeparators(): void
     {
-        // Arrange & Act
         $path = Path::create('test\\path/mixed/separators\\here');
 
-        // Assert
-        Assert::same('test/path/mixed/separators/here', (string) $path);
+        Assert::same((string) $path, 'test/path/mixed/separators/here');
     }
 
     public function testCreateRemovesMultipleSeparators(): void
     {
-        // Arrange & Act
         $path = Path::create('test//path///extra//separators');
 
-        // Assert
-        Assert::same('test/path/extra/separators', (string) $path);
+        Assert::same((string) $path, 'test/path/extra/separators');
     }
 
     public function testCreateResolvesCurrentDirectorySegments(): void
     {
-        // Arrange & Act
         $path = Path::create('test/./path/./current');
 
-        // Assert
-        Assert::same('test/path/current', (string) $path);
+        Assert::same((string) $path, 'test/path/current');
     }
 
     public function testCreateResolvesParentDirectorySegments(): void
     {
-        // Arrange & Act
         $path = Path::create('test/parent/../path');
 
-        // Assert
-        Assert::same('test/path', (string) $path);
+        Assert::same((string) $path, 'test/path');
     }
 
-    public function testCreateThrowsExceptionForInvalidParentNavigation(): void
+    public function testCreateThrowsExceptionForInvalidParentNavigation(): never
     {
-        // Arrange & Assert
-        Expect::exception(\LogicException::class);
-        // ->withMessage('Cannot go up from root');
+        Expect::exception(\LogicException::class)
+            ->withMessageContaining('Cannot go up from root');
 
-        // Act
         Path::create('/test/../..');
     }
 
     public function testJoinPathComponents(): void
     {
-        // Arrange
         $path = Path::create('base/path');
 
-        // Act
         $result = $path->join('additional', 'components');
 
-        // Assert
-        Assert::same('base/path/additional/components', (string) $result);
+        Assert::same((string) $result, 'base/path/additional/components');
     }
 
     public function testJoinWithEmptyComponentsIgnoresThem(): void
     {
-        // Arrange
         $path = Path::create('base/path');
 
-        // Act
         $result = $path->join('', 'component', '');
 
-        // Assert
-        Assert::same('base/path/component', (string) $result);
+        Assert::same((string) $result, 'base/path/component');
     }
 
-    public function testJoinWithPathObjects(): void
+    public function testJoinWithAbsolutePathObjectThrows(): never
     {
-        // Arrange
         $path = Path::create('base/path');
         $additionalPath = Path::create('additional/path');
 
-        // Assert (prepare for expected exception)
-        Expect::exception(\LogicException::class);
-        // ->withMessage('Joining an absolute path is not allowed');
+        Expect::exception(\LogicException::class)
+            ->withMessage('Joining an absolute path is not allowed.');
 
-        // Act
-        // Using an absolute Path object which should throw
         $path->join($additionalPath->absolute());
     }
 
     public function testJoinWithRelativePathObjects(): void
     {
-        // Arrange
         $path = Path::create('base/path');
         $additionalPath = Path::create('additional/path');
 
-        // Act
         $result = $path->join($additionalPath);
 
-        // Assert
-        Assert::same('base/path/additional/path', (string) $result);
+        Assert::same((string) $result, 'base/path/additional/path');
     }
 
-    public function testJoinWithAbsolutePathString(): void
+    public function testJoinWithAbsolutePathStringThrows(): never
     {
-        // Arrange
         $path = Path::create('base/path');
 
-        // Assert (prepare for expected exception)
-        Expect::exception(\LogicException::class);
-        // ->withMessage('Joining an absolute path is not allowed');
+        Expect::exception(\LogicException::class)
+            ->withMessage('Joining an absolute path is not allowed.');
 
-        // Act
         $path->join('/absolute/path');
     }
 
     public function testName(): void
     {
-        // Arrange
         $path = Path::create('some/path/file.txt');
 
-        // Act
         $name = $path->name();
 
-        // Assert
-        Assert::same('file.txt', $name);
+        Assert::same($name, 'file.txt');
     }
 
     public function testNameWithNoDirectoryComponents(): void
     {
-        // Arrange
         $path = Path::create('file.txt');
 
-        // Act
         $name = $path->name();
 
-        // Assert
-        Assert::same('file.txt', $name);
+        Assert::same($name, 'file.txt');
     }
 
     public function testStem(): void
     {
-        // Arrange
         $path = Path::create('some/path/file.txt');
 
-        // Act
         $stem = $path->stem();
 
-        // Assert
-        Assert::same('file', $stem);
+        Assert::same($stem, 'file');
     }
 
     public function testStemWithNoExtension(): void
     {
-        // Arrange
         $path = Path::create('some/path/file');
 
-        // Act
         $stem = $path->stem();
 
-        // Assert
-        Assert::same('file', $stem);
+        Assert::same($stem, 'file');
     }
 
     public function testStemWithMultipleDots(): void
     {
-        // Arrange
         $path = Path::create('some/path/file.config.json');
 
-        // Act
         $stem = $path->stem();
 
-        // Assert
-        Assert::same('file.config', $stem);
+        Assert::same($stem, 'file.config');
     }
 
     public function testStemWithHiddenFile(): void
     {
-        // Arrange
         $path = Path::create('some/path/.hidden');
 
-        // Act
         $stem = $path->stem();
 
-        // Assert
-        Assert::same('.hidden', $stem);
+        Assert::same($stem, '.hidden');
     }
 
     public function testExtension(): void
     {
-        // Arrange
         $path = Path::create('some/path/file.txt');
 
-        // Act
         $extension = $path->extension();
 
-        // Assert
-        Assert::same('txt', $extension);
+        Assert::same($extension, 'txt');
     }
 
     public function testExtensionWithMultipleDots(): void
     {
-        // Arrange
         $path = Path::create('some/path/file.config.json');
 
-        // Act
         $extension = $path->extension();
 
-        // Assert
-        Assert::same('json', $extension);
+        Assert::same($extension, 'json');
     }
 
     public function testExtensionWithNoExtension(): void
     {
-        // Arrange
         $path = Path::create('some/path/file');
 
-        // Act
         $extension = $path->extension();
 
-        // Assert
-        Assert::same('', $extension);
+        Assert::same($extension, '');
     }
 
     public function testExtensionWithHiddenFile(): void
     {
-        // Arrange
         $path = Path::create('some/path/.hidden');
 
-        // Act
         $extension = $path->extension();
 
-        // Assert
-        Assert::same('hidden', $extension);
+        Assert::same($extension, 'hidden');
     }
 
     #[DataProvider('providePathsForParent')]
     public function testParent(string $inputPath, string $expectedParent): void
     {
-        // Arrange
         $path = Path::create($inputPath);
 
-        // Act
         $parent = $path->parent();
 
-        // Assert
-        Assert::same($expectedParent, (string) $parent);
+        Assert::same((string) $parent, $expectedParent);
     }
 
     #[DataProvider('providePathsForAbsoluteDetection')]
     public function testIsAbsolute(string $pathString, bool $expected): void
     {
-        // Arrange
         $path = Path::create($pathString);
 
-        // Act
         $isAbsolute = $path->isAbsolute();
 
-        // Assert
-        Assert::same($expected, $isAbsolute, "Path '$pathString' should be " . ($expected ? 'absolute' : 'relative'));
+        Assert::same($isAbsolute, $expected, "Path '$pathString' should be " . ($expected ? 'absolute' : 'relative'));
     }
 
     public function testIsRelative(): void
     {
-        // Arrange
         $absolutePath = DIRECTORY_SEPARATOR === '\\'
             ? Path::create('C:/Users/test')
             : Path::create('/home/user');
-
         $relativePath = Path::create('relative/path');
 
-        // Act & Assert
         Assert::false($absolutePath->isRelative());
         Assert::true($relativePath->isRelative());
     }
@@ -391,19 +327,16 @@ final class PathTest
      */
     public function testExists(): void
     {
-        // Arrange
         $tempFile = \tempnam(\sys_get_temp_dir(), 'path_test_');
         Assert::true(\is_string($tempFile), 'Failed to create temp file');
 
         $path = Path::create($tempFile);
         $nonExistingPath = Path::create('non/existing/path/file.txt');
 
-        // Act & Assert
         try {
             Assert::true($path->exists());
             Assert::false($nonExistingPath->exists());
         } finally {
-            // Clean up
             @\unlink($tempFile);
         }
     }
@@ -414,12 +347,10 @@ final class PathTest
      */
     public function testIsDir(): void
     {
-        // Arrange
         $currentDirPath = Path::create('.');
         $parentDirPath = Path::create('..');
         $filePath = Path::create('file.txt');
 
-        // Act & Assert
         Assert::true($currentDirPath->isDir());
         Assert::true($parentDirPath->isDir());
         Assert::false($filePath->isDir());
@@ -431,149 +362,118 @@ final class PathTest
      */
     public function testIsFile(): void
     {
-        // Arrange
         $currentDirPath = Path::create('.');
         $parentDirPath = Path::create('..');
         $filePath = Path::create('file.txt');
 
-        // Create a temporary file to test with
         $tempFile = \tempnam(\sys_get_temp_dir(), 'path_test_');
         Assert::true(\is_string($tempFile), 'Failed to create temp file');
         $realFilePath = Path::create($tempFile);
 
-        // Act & Assert
         try {
             Assert::false($currentDirPath->isFile());
             Assert::false($parentDirPath->isFile());
             Assert::false($filePath->isFile()); // Doesn't exist yet
             Assert::true($realFilePath->isFile(), "Temporary file should be a file `$realFilePath`");
         } finally {
-            // Clean up
             @\unlink($tempFile);
         }
     }
 
     public function testAbsoluteForAlreadyAbsolutePath(): void
     {
-        // Arrange
         $absolutePath = DIRECTORY_SEPARATOR === '\\'
             ? Path::create('C:/Users/test')
             : Path::create('/home/user');
 
-        // Act
         $result = $absolutePath->absolute();
 
-        // Assert
-        Assert::same((string) $absolutePath, (string) $result);
+        Assert::same((string) $result, (string) $absolutePath);
     }
 
     public function testAbsoluteForRelativePath(): void
     {
-        // Arrange
         $relativePath = Path::create('relative/path');
 
-        // Skip this test if we can't get cwd
         $cwd = \getcwd();
-        if ($cwd === false) {
-            // todo
-            // self::markTestSkipped('Cannot get current working directory');
-        }
+        $cwd === false and throw new SkipTest('Cannot get current working directory');
 
         $expected = Path::create($cwd . DIRECTORY_SEPARATOR . 'relative/path');
 
-        // Act
         $result = $relativePath->absolute();
 
-        // Assert
-        Assert::same((string) $expected, (string) $result);
+        Assert::same((string) $result, (string) $expected);
     }
 
     public function testCreateWindowsTmpFile(): void
     {
         $path = Path::create('C:\Users\roxbl\AppData\Local\Temp\patB6E7.tmp');
 
-        Assert::same('C:/Users/roxbl/AppData/Local/Temp/patB6E7.tmp', (string) $path);
+        Assert::same((string) $path, 'C:/Users/roxbl/AppData/Local/Temp/patB6E7.tmp');
     }
 
     public function testToString(): void
     {
-        // Arrange
-        $pathString = 'some/path/file.txt';
-        $path = Path::create($pathString);
+        $path = Path::create('some/path/file.txt');
 
-        // Act
         $result = (string) $path;
 
-        // Assert
-        Assert::same('some/path/file.txt', $result);
+        Assert::same($result, 'some/path/file.txt');
     }
 
+    /**
+     * @param non-empty-string $pattern
+     */
     #[DataProvider('providePathsForMatch')]
     public function testMatch(string $pathString, string $pattern, bool $expected): void
     {
-        // Arrange
         $path = Path::create($pathString)->absolute();
 
-        // Act
         $result = $path->match($pattern);
 
-        // Assert
-        Assert::same($expected, $result, "Path '$pathString' should " . ($expected ? 'match' : 'not match') . " pattern '$pattern'");
+        Assert::same($result, $expected, "Path '$pathString' should " . ($expected ? 'match' : 'not match') . " pattern '$pattern'");
     }
 
     public function testMatchWithPathObject(): void
     {
-        // Arrange
         $path = Path::create('test/file.txt')->absolute();
         $pattern = Path::create('test/*.txt');
 
-        // Act
         $result = $path->match($pattern);
 
-        // Assert
         Assert::true($result, 'Path should match pattern when pattern is Path object');
     }
 
     public function testMatchWithRelativePaths(): void
     {
-        // Arrange - both paths are relative and will be converted to absolute
         $path = Path::create('test/file.txt');
         $pattern = 'test/*.txt';
 
-        // Act
         $result = $path->match($pattern);
 
-        // Assert
         Assert::true($result, 'Relative path should match pattern after conversion to absolute');
     }
 
     public function testMatchWithComplexPattern(): void
     {
-        // Arrange
         $path = Path::create('src/Common/Path.php')->absolute();
         $pattern = 'src/Common/*.php';
 
-        // Act
         $result = $path->match($pattern);
 
-        // Assert
         Assert::true($result, 'Path should match complex pattern');
     }
 
     public function testMatchCaseSensitive(): void
     {
-        // Arrange
         $path = Path::create('Test/File.TXT')->absolute();
         $pattern = 'test/file.txt';
 
-        // Act
         $result = $path->match($pattern);
 
-        // Assert
-        // On Windows, filesystem is case-insensitive, on Unix it's case-sensitive
-        // This test documents the actual behavior
-        $isWindows = DIRECTORY_SEPARATOR === '\\';
-        if ($isWindows) {
+        // On Windows, filesystem is case-insensitive, on Unix it's case-sensitive.
+        // This test documents the actual behavior.
+        if (DIRECTORY_SEPARATOR === '\\') {
             Assert::true($result, 'On Windows, match should be case-insensitive');
         } else {
             Assert::false($result, 'On Unix, match should be case-sensitive');
@@ -582,37 +482,27 @@ final class PathTest
 
     public function testMatchWithCaseSensitiveFlag(): void
     {
-        // Arrange
         $path = Path::create('Test/File.TXT')->absolute();
         $pattern = 'test/file.txt';
 
-        // Act & Assert - case-sensitive matching
         Assert::false($path->match($pattern, true), 'Should not match when case-sensitive is true');
-
-        // Act & Assert - case-insensitive matching
         Assert::true($path->match($pattern, false), 'Should match when case-sensitive is false');
     }
 
     public function testMatchWithCaseSensitiveFlagExactCase(): void
     {
-        // Arrange
         $path = Path::create('Test/File.TXT')->absolute();
         $patternExact = 'Test/File.TXT';
         $patternLower = 'test/file.txt';
 
-        // Act & Assert - exact case with case-sensitive flag
         Assert::true($path->match($patternExact, true), 'Should match exact case with case-sensitive flag');
-
-        // Act & Assert - different case with case-sensitive flag
         Assert::false($path->match($patternLower, true), 'Should not match different case with case-sensitive flag');
     }
 
     public function testMatchCaseInsensitiveOnAllOS(): void
     {
-        // Arrange
         $path = Path::create('Documents/FILE.txt')->absolute();
 
-        // Act & Assert - force case-insensitive on any OS
         Assert::true($path->match('*/file.TXT', false), 'Should match with case-insensitive flag');
         Assert::true($path->match('*/FILE.txt', false), 'Should match with case-insensitive flag');
         Assert::true($path->match('*/FiLe.TxT', false), 'Should match with case-insensitive flag');
@@ -620,10 +510,8 @@ final class PathTest
 
     public function testMatchCaseSensitiveOnAllOS(): void
     {
-        // Arrange
         $path = Path::create('Documents/report.PDF')->absolute();
 
-        // Act & Assert - force case-sensitive on any OS
         Assert::true($path->match('*/report.PDF', true), 'Should match exact case');
         Assert::false($path->match('*/report.pdf', true), 'Should not match different case');
         Assert::false($path->match('*/REPORT.PDF', true), 'Should not match different case');
@@ -631,51 +519,46 @@ final class PathTest
 
     public function testMatchWithWildcardsAndCaseFlag(): void
     {
-        // Arrange
         $path = Path::create('src/Controller/UserController.php')->absolute();
 
-        // Act & Assert - wildcards with case-insensitive
         Assert::true($path->match('*/controller/*.PHP', false), 'Wildcard should match case-insensitive');
-
-        // Act & Assert - wildcards with case-sensitive
         Assert::false($path->match('*/controller/*.php', true), 'Should not match - Controller != controller');
         Assert::true($path->match('*/Controller/*.php', true), 'Should match with correct case');
     }
 
+    /**
+     * @param non-empty-string $cwd
+     */
     #[DataProvider('provideAbsoluteWithCwd')]
     public function testAbsoluteWithCwd(string $relativePath, string $cwd, ?string $expected = null, bool $usesCurrentDir = false): void
     {
-        // Arrange
         $path = Path::create($relativePath);
 
-        // Act
         $result = $path->absolute($cwd);
 
-        // Assert
         if ($usesCurrentDir) {
-            // Special case: relative cwd needs to be resolved against current directory
+            // Special case: relative cwd needs to be resolved against current directory.
             $currentCwd = \getcwd();
-            if ($currentCwd === false) {
-                return; // Skip if can't get cwd
-            }
-            $expectedCwd = Path::create($currentCwd)->join($cwd);
-            $expected = $expectedCwd->join($relativePath);
-            Assert::same((string) $expected, (string) $result);
+            $currentCwd === false and throw new SkipTest('Cannot get current working directory');
+
+            $expected = Path::create($currentCwd)->join($cwd)->join($relativePath);
+            Assert::same((string) $result, (string) $expected);
         } else {
-            Assert::same($expected, (string) $result);
+            Assert::same((string) $result, $expected);
         }
     }
 
+    /**
+     * @param non-empty-string $cwd
+     */
     #[DataProvider('provideAbsoluteWithCwdErrors')]
-    public function testAbsoluteWithCwdThrowsException(string $absolutePath, string $cwd): void
+    public function testAbsoluteWithCwdThrowsException(string $absolutePath, string $cwd): never
     {
-        // Arrange
         $path = Path::create($absolutePath);
 
-        // Assert
-        Expect::exception(\LogicException::class);
+        Expect::exception(\LogicException::class)
+            ->withMessageContaining('does not start with the given directory');
 
-        // Act
         $path->absolute($cwd);
     }
 }

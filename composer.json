@@ -26,14 +26,14 @@
         }
     ],
     "require": {
-        "php": ">=8.1"
+        "php": ">=8.2"
     },
     "require-dev": {
         "buggregator/trap": "^1.15",
         "spiral/code-style": "^2.3.1",
         "roxblnfk/unpoly": "^1.8.1",
         "vimeo/psalm": "^6.13",
-        "testo/testo": "^0.10.17"
+        "testo/testo": "^0.10.20"
     },
     "minimum-stability": "dev",
     "prefer-stable": true,
@@ -65,6 +65,7 @@
         "refactor:ci": "rector process --config=rector.php --dry-run --ansi",
         "test": [
             "testo"
-        ]
+        ],
+        "test:unit": "vendor/bin/testo --suite=Unit"
     }
 }
