@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.0](https://github.com/php-internal/path/compare/1.2.0...1.3.0) (2026-06-09)
+
+
+### Features
+
+* Update PHP version requirement to &gt;=8.2 ([46d5597](https://github.com/php-internal/path/commit/46d559784bc9245e72d8615b2f3cfda32302a98e))
+
+
+### Bug Fixes
+
+* Update testo/testo version to ^0.10.17 in composer.json ([b4fc426](https://github.com/php-internal/path/commit/b4fc42647fff8447caf5a1e92a9069a3bafe9b9a))
+
 ## [1.2.0](https://github.com/php-internal/path/compare/1.1.1...1.2.0) (2025-12-03)
 
 
