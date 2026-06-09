@@ -30,6 +30,8 @@ jobs:
   infection:
     timeout-minutes: 4
     runs-on: ${{ matrix.os }}
+    env:
+      COMPOSER_ROOT_VERSION: '1.x-dev'
     concurrency:
       cancel-in-progress: true
       group: infection-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{ matrix.php-version }}-${{ matrix.dependencies }}
@@ -56,8 +58,6 @@ jobs:
 
       - name: 📥 Install dependencies with composer
         uses: ramsey/composer-install@v3
-        env:
-          COMPOSER_ROOT_VERSION: '1.x-dev'
         with:
           dependency-versions: ${{ matrix.dependencies }}
 
