@@ -38,6 +38,11 @@ jobs:
       - name: 🤖 Validate composer.json and composer.lock
         run: composer validate --ansi --strict
 
+      # Infection is dev-only and requires PHP >= 8.3, which breaks installation
+      # on the 8.2 matrix leg. It is not needed for the security audit.
+      - name: 🧹 Remove Infection (incompatible with PHP 8.2)
+        run: composer remove --dev infection/infection --no-update --no-interaction
+
       - name: 📥 Install dependencies with composer
         uses: ramsey/composer-install@v3
         with:
