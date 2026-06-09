@@ -38,6 +38,7 @@ final class Path implements \Stringable
     /**
      * @param non-empty-string $path The filesystem path. In never ends with a separator.
      *        Might be ended with "." or ".." if the path is a directory.
+     * @psalm-mutation-free
      */
     private function __construct(
         private readonly string $path,
@@ -46,6 +47,9 @@ final class Path implements \Stringable
 
     /**
      * Create a new path object
+     *
+     * @psalm-pure
+     * @psalm-mutation-free
      */
     public static function create(self|string $path = ''): self
     {
@@ -58,6 +62,7 @@ final class Path implements \Stringable
      * Join this path with one or more path components
      *
      * @psalm-immutable
+     * @psalm-mutation-free
      */
     public function join(self|string ...$paths): self
     {
@@ -88,6 +93,7 @@ final class Path implements \Stringable
      * Return the file or directory name (the final path component)
      *
      * @return non-empty-string
+     * @psalm-mutation-free
      */
     public function name(): string
     {
@@ -101,6 +107,7 @@ final class Path implements \Stringable
      * Return the file stem (the file name without its extension)
      *
      * @return non-empty-string
+     * @psalm-mutation-free
      */
     public function stem(): string
     {
@@ -111,6 +118,8 @@ final class Path implements \Stringable
 
     /**
      * Return the file suffix (extension) without the leading dot
+     *
+     * @psalm-mutation-free
      */
     public function extension(): string
     {
@@ -123,6 +132,7 @@ final class Path implements \Stringable
      * Return the parent directory path
      *
      * @psalm-immutable
+     * @psalm-mutation-free
      */
     public function parent(): self
     {
@@ -152,6 +162,8 @@ final class Path implements \Stringable
 
     /**
      * Return whether this path is absolute
+     *
+     * @psalm-mutation-free
      */
     public function isAbsolute(): bool
     {
@@ -160,6 +172,8 @@ final class Path implements \Stringable
 
     /**
      * Return whether this path is relative
+     *
+     * @psalm-mutation-free
      */
     public function isRelative(): bool
     {

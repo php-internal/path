@@ -1,0 +1,65 @@
+---
+
+name: 🧬 Mutation testing
+
+on:  # yamllint disable-line rule:truthy
+  pull_request:
+    branches:
+      - 1.x
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'infection.json'
+      - 'testo.php'
+      - 'composer.json'
+      - 'composer.lock'
+      - '.github/workflows/infection.yml'
+  push:
+    branches:
+      - 1.x
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'infection.json'
+      - 'testo.php'
+      - 'composer.json'
+      - 'composer.lock'
+      - '.github/workflows/infection.yml'
+
+jobs:
+  infection:
+    timeout-minutes: 4
+    runs-on: ${{ matrix.os }}
+    concurrency:
+      cancel-in-progress: true
+      group: infection-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{ matrix.php-version }}-${{ matrix.dependencies }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+        php-version:
+          - '8.5'
+        dependencies:
+          - highest
+    name: 🧬 Infection PHP${{ matrix.php-version }}
+    steps:
+      - name: 📦 Check out the codebase
+        uses: actions/checkout@v6
+
+      - name: 🛠️ Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          coverage: xdebug
+          ini-values: error_reporting=E_ALL
+
+      - name: 📥 Install dependencies with composer
+        uses: ramsey/composer-install@v3
+        env:
+          COMPOSER_ROOT_VERSION: '1.x-dev'
+        with:
+          dependency-versions: ${{ matrix.dependencies }}
+
+      - name: 🧬 Run Infection
+        run: composer infect:ci

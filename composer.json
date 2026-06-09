@@ -30,10 +30,13 @@
     },
     "require-dev": {
         "buggregator/trap": "^1.15",
-        "spiral/code-style": "^2.3.1",
+        "infection/infection": "^0.33.2",
+        "llm/skills": "^1.7",
         "roxblnfk/unpoly": "^1.8.1",
-        "vimeo/psalm": "^6.13",
-        "testo/testo": "^0.10.20"
+        "spiral/code-style": "^2.3.1",
+        "testo/bridge-infection": "^0.1.6",
+        "testo/testo": "^0.10.21",
+        "vimeo/psalm": "^7"
     },
     "minimum-stability": "dev",
     "prefer-stable": true,
@@ -47,16 +50,19 @@
             "Internal\\Path\\Tests\\": "tests/"
         }
     },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "infection/extension-installer": true,
+            "llm/skills": true
+        }
+    },
     "scripts": {
         "cs:diff": "php-cs-fixer fix --dry-run -v --diff",
         "cs:fix": "php-cs-fixer fix -v",
-        "infect": [
-            "@putenv XDEBUG_MODE=coverage",
-            "roave-infection-static-analysis-plugin --configuration=infection.json.dist"
-        ],
+        "infect": "infection --configuration=infection.json --threads=max",
         "infect:ci": [
-            "@putenv XDEBUG_MODE=coverage",
-            "roave-infection-static-analysis-plugin --ansi --configuration=infection.json.dist --logger-github --ignore-msi-with-no-mutations --only-covered"
+            "infection --ansi --configuration=infection.json --logger-github --threads=max --show-mutations=0"
         ],
         "psalm": "psalm",
         "psalm:baseline": "psalm --set-baseline=psalm-baseline.xml",
