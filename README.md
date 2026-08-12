@@ -92,6 +92,46 @@ $absolute = $relative->absolute('/var/www/app');
 echo $path; // Path implements Stringable
 ```
 
+### Computing relative paths
+
+```php
+$path = Path::create('/var/www/app/src/Controller.php');
+
+$path->tryRelative('/var/www/app');  // Path('src/Controller.php')
+$path->tryRelative('/var/www/logs'); // Path('../app/src/Controller.php') – may traverse upwards
+$path->tryRelative('/var/www/app/src/Controller.php'); // Path('.') – path equals base
+
+// Returns null when a relative path cannot be built at all,
+// e.g. for paths on different Windows drives
+Path::create('D:/data/file.txt')->tryRelative('C:/Users'); // null
+
+// A relative path is returned as is: Path carries no base of its own
+Path::create('src/file.php')->tryRelative('/var/www'); // Path('src/file.php')
+```
+
+### Containment checks
+
+```php
+$path = Path::create('/var/www/app/src/file.php');
+
+$path->isWithin('/var/www/app'); // true
+$path->isWithin('/var/www');     // true
+$path->isWithin('/var/log');     // false
+$path->isWithin('/var/www-old'); // false – partial segment match doesn't count
+
+// A path is always within itself
+Path::create('/var/www')->isWithin('/var/www'); // true
+
+// The base defaults to the current working directory,
+// which makes it a convenient guard against path traversal in user input
+Path::create('uploads/avatar.png')->isWithin(); // true
+Path::create('../../etc/passwd')->isWithin();   // false
+```
+
+The check is lexical: paths are compared segment by segment without touching
+the filesystem. Segment comparison is case-insensitive on Windows and
+case-sensitive on Unix.
+
 ### Pattern matching
 
 ```php
