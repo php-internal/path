@@ -320,6 +320,42 @@ final class Path implements \Stringable
     }
 
     /**
+     * Check whether this path is located inside the given base directory.
+     *
+     * The check is lexical: both paths are resolved to absolute form and compared
+     * segment by segment, the filesystem is not accessed. A path equal to the base
+     * is considered within it. Case sensitivity follows the OS: case-insensitive
+     * on Windows, case-sensitive on Unix.
+     *
+     * With the default base `.` the method answers whether the path stays inside
+     * the current working directory, which makes it a convenient guard against
+     * path traversal in user input.
+     *
+     * @param self|non-empty-string $base Base directory to check against.
+     *        Defaults to the current working directory. A relative base is
+     *        resolved against the current working directory first.
+     *
+     * @throws \RuntimeException If current working directory cannot be determined.
+     */
+    public function isWithin(self|string $base = '.'): bool
+    {
+        $thisParts = self::segments($this->absolute()->path);
+        $baseParts = self::segments(self::create($base)->absolute()->path);
+
+        if (\count($baseParts) > \count($thisParts)) {
+            return false;
+        }
+
+        foreach ($baseParts as $i => $segment) {
+            if (!self::sameSegment($thisParts[$i], $segment)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * Match the path against a pattern using shell wildcard pattern matching.
      *
      * Both the path and pattern are converted to absolute paths before matching.

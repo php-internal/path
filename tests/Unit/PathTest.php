@@ -185,6 +185,90 @@ final class PathTest
         ];
     }
 
+    public static function provideIsWithin(): \Generator
+    {
+        $isWindows = \DIRECTORY_SEPARATOR === '\\';
+        $root = $isWindows ? 'C:' : '';
+
+        yield 'path directly in base' => [
+            'path' => "$root/var/www/app/file.php",
+            'base' => "$root/var/www/app",
+            'expected' => true,
+        ];
+
+        yield 'path deep inside base' => [
+            'path' => "$root/var/www/app/src/deep/file.php",
+            'base' => "$root/var/www/app",
+            'expected' => true,
+        ];
+
+        yield 'path equals base' => [
+            'path' => "$root/var/www/app",
+            'base' => "$root/var/www/app",
+            'expected' => true,
+        ];
+
+        yield 'sibling directory' => [
+            'path' => "$root/var/www/other",
+            'base' => "$root/var/www/app",
+            'expected' => false,
+        ];
+
+        yield 'parent of base' => [
+            'path' => "$root/var/www",
+            'base' => "$root/var/www/app",
+            'expected' => false,
+        ];
+
+        yield 'partially matching segment' => [
+            'path' => "$root/var/www-old",
+            'base' => "$root/var/www",
+            'expected' => false,
+        ];
+
+        yield 'partially matching segment with children' => [
+            'path' => "$root/var/www-old/app/file.php",
+            'base' => "$root/var/www",
+            'expected' => false,
+        ];
+
+        yield 'base is root' => [
+            'path' => "$root/var/www/app",
+            'base' => "$root/",
+            'expected' => true,
+        ];
+
+        yield 'root is within root' => [
+            'path' => "$root/",
+            'base' => "$root/",
+            'expected' => true,
+        ];
+
+        yield 'root is not within nested base' => [
+            'path' => "$root/",
+            'base' => "$root/var",
+            'expected' => false,
+        ];
+
+        yield 'different windows drives' => [
+            'path' => 'D:/var/www/app',
+            'base' => 'C:/var/www',
+            'expected' => false,
+        ];
+
+        yield 'unix root against windows drive' => [
+            'path' => '/var/www/app',
+            'base' => 'C:/var/www',
+            'expected' => false,
+        ];
+
+        yield 'windows drive against unix root' => [
+            'path' => 'C:/var/www/app',
+            'base' => '/var/www',
+            'expected' => false,
+        ];
+    }
+
     public function testCreateReturnsPathInstance(): void
     {
         $path = Path::create('test/path');
@@ -747,4 +831,75 @@ final class PathTest
         Assert::same((string) $base->join($result), (string) $path);
     }
 
+    /**
+     * @param non-empty-string $path
+     * @param non-empty-string $base
+     */
+    #[DataProvider('provideIsWithin')]
+    public function testIsWithin(string $path, string $base, bool $expected): void
+    {
+        $result = Path::create($path)->isWithin($base);
+
+        Assert::same($result, $expected, "Path '$path' should " . ($expected ? '' : 'not ') . "be within '$base'");
+    }
+
+    public function testIsWithinWithPathObjectAsBase(): void
+    {
+        $isWindows = DIRECTORY_SEPARATOR === '\\';
+        $base = Path::create($isWindows ? 'C:/var/www/app' : '/var/www/app');
+        $inside = Path::create($isWindows ? 'C:/var/www/app/src/file.php' : '/var/www/app/src/file.php');
+        $outside = Path::create($isWindows ? 'C:/var/www/other' : '/var/www/other');
+
+        Assert::true($inside->isWithin($base));
+        Assert::false($outside->isWithin($base));
+    }
+
+    public function testIsWithinDefaultBaseIsCurrentDirectory(): void
+    {
+        $relativeInside = Path::create('src/Path.php');
+        $currentDir = Path::create('.');
+        $traversal = Path::create('../outside/file.php');
+
+        Assert::true($relativeInside->isWithin(), 'Relative path should be within the current directory');
+        Assert::true($currentDir->isWithin(), 'Current directory should be within itself');
+        Assert::false($traversal->isWithin(), 'Path traversal should not be within the current directory');
+    }
+
+    public function testIsWithinDefaultBaseForAbsolutePath(): void
+    {
+        $cwd = \getcwd();
+        $cwd === false and throw new SkipTest('Cannot get current working directory');
+
+        $inside = Path::create($cwd)->join('src', 'Path.php');
+        $outside = Path::create($cwd)->parent()->join('definitely-outside');
+
+        Assert::true($inside->isWithin());
+        Assert::false($outside->isWithin());
+    }
+
+    public function testIsWithinWithRelativeBaseResolvesAgainstCwd(): void
+    {
+        $cwd = \getcwd();
+        $cwd === false and throw new SkipTest('Cannot get current working directory');
+
+        $path = Path::create($cwd)->join('project', 'app', 'src', 'file.php');
+
+        Assert::true($path->isWithin('project/app'));
+        Assert::false($path->isWithin('project/other'));
+    }
+
+    public function testIsWithinIsCaseSensitiveDependingOnOs(): void
+    {
+        $isWindows = DIRECTORY_SEPARATOR === '\\';
+        $path = Path::create($isWindows ? 'C:/var/WWW/app' : '/var/WWW/app');
+        $base = $isWindows ? 'C:/var/www' : '/var/www';
+
+        $result = $path->isWithin($base);
+
+        if ($isWindows) {
+            Assert::true($result, 'On Windows, segment comparison is case-insensitive');
+        } else {
+            Assert::false($result, 'On Unix, segment comparison is case-sensitive');
+        }
+    }
 }
