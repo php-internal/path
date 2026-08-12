@@ -101,6 +101,90 @@ final class PathTest
         ];
     }
 
+    public static function provideTryRelative(): \Generator
+    {
+        $isWindows = \DIRECTORY_SEPARATOR === '\\';
+        $root = $isWindows ? 'C:' : '';
+
+        yield 'path inside base' => [
+            'path' => "$root/var/www/app/src/file.php",
+            'base' => "$root/var/www/app",
+            'expected' => 'src/file.php',
+        ];
+
+        yield 'path directly in base' => [
+            'path' => "$root/var/www/app/file.php",
+            'base' => "$root/var/www/app",
+            'expected' => 'file.php',
+        ];
+
+        yield 'path equals base' => [
+            'path' => "$root/var/www/app",
+            'base' => "$root/var/www/app",
+            'expected' => '.',
+        ];
+
+        yield 'sibling directory' => [
+            'path' => "$root/var/www/other",
+            'base' => "$root/var/www/app",
+            'expected' => '../other',
+        ];
+
+        yield 'parent of base' => [
+            'path' => "$root/var/www",
+            'base' => "$root/var/www/app/src",
+            'expected' => '../..',
+        ];
+
+        yield 'deep traversal upwards' => [
+            'path' => "$root/var/log/nginx/error.log",
+            'base' => "$root/var/www/app/src",
+            'expected' => '../../../log/nginx/error.log',
+        ];
+
+        yield 'base is root' => [
+            'path' => "$root/var/www",
+            'base' => "$root/",
+            'expected' => 'var/www',
+        ];
+
+        yield 'path is root and base is root' => [
+            'path' => "$root/",
+            'base' => "$root/",
+            'expected' => '.',
+        ];
+
+        yield 'path is root and base is nested' => [
+            'path' => "$root/",
+            'base' => "$root/var/www",
+            'expected' => '../..',
+        ];
+
+        yield 'partially matching segment is not a prefix' => [
+            'path' => "$root/var/www/application/src",
+            'base' => "$root/var/www/app",
+            'expected' => '../application/src',
+        ];
+    }
+
+    public static function provideTryRelativeUnrelatedRoots(): \Generator
+    {
+        yield 'different windows drives' => [
+            'path' => 'D:/var/www/app',
+            'base' => 'C:/var/www/app',
+        ];
+
+        yield 'unix root against windows drive' => [
+            'path' => '/var/www/app',
+            'base' => 'C:/var/www/app',
+        ];
+
+        yield 'windows drive against unix root' => [
+            'path' => 'C:/var/www/app',
+            'base' => '/var/www/app',
+        ];
+    }
+
     public function testCreateReturnsPathInstance(): void
     {
         $path = Path::create('test/path');
@@ -561,4 +645,106 @@ final class PathTest
 
         $path->absolute($cwd);
     }
+
+    /**
+     * @param non-empty-string $path
+     * @param non-empty-string $base
+     */
+    #[DataProvider('provideTryRelative')]
+    public function testTryRelative(string $path, string $base, string $expected): void
+    {
+        $result = Path::create($path)->tryRelative($base);
+
+        Assert::notNull($result, "Path '$path' should be relative to '$base'");
+        Assert::same((string) $result, $expected);
+    }
+
+    /**
+     * @param non-empty-string $path
+     * @param non-empty-string $base
+     */
+    #[DataProvider('provideTryRelativeUnrelatedRoots')]
+    public function testTryRelativeWithUnrelatedRootsReturnsNull(string $path, string $base): void
+    {
+        $result = Path::create($path)->tryRelative($base);
+
+        Assert::null($result, "Path '$path' should not be relative to '$base'");
+    }
+
+    public function testTryRelativeForRelativePathReturnsSameInstance(): void
+    {
+        $path = Path::create('some/relative/path');
+        $base = DIRECTORY_SEPARATOR === '\\' ? 'C:/var/www' : '/var/www';
+
+        $result = $path->tryRelative($base);
+
+        Assert::same($result, $path, 'Relative path should be returned as is');
+    }
+
+    public function testTryRelativeWithRelativeBaseResolvesAgainstCwd(): void
+    {
+        $cwd = \getcwd();
+        $cwd === false and throw new SkipTest('Cannot get current working directory');
+
+        $path = Path::create($cwd)->join('project', 'app', 'src', 'file.php');
+
+        $result = $path->tryRelative('project/app');
+
+        Assert::notNull($result);
+        Assert::same((string) $result, 'src/file.php');
+    }
+
+    public function testTryRelativeWithCurrentDirectoryAsBase(): void
+    {
+        $cwd = \getcwd();
+        $cwd === false and throw new SkipTest('Cannot get current working directory');
+
+        $path = Path::create($cwd)->join('src', 'Path.php');
+
+        $result = $path->tryRelative('.');
+
+        Assert::notNull($result);
+        Assert::same((string) $result, 'src/Path.php');
+    }
+
+    public function testTryRelativeWithPathObjectAsBase(): void
+    {
+        $isWindows = DIRECTORY_SEPARATOR === '\\';
+        $path = Path::create($isWindows ? 'C:/var/www/app/src/file.php' : '/var/www/app/src/file.php');
+        $base = Path::create($isWindows ? 'C:/var/www/app' : '/var/www/app');
+
+        $result = $path->tryRelative($base);
+
+        Assert::notNull($result);
+        Assert::same((string) $result, 'src/file.php');
+    }
+
+    public function testTryRelativeIsCaseSensitiveDependingOnOs(): void
+    {
+        $isWindows = DIRECTORY_SEPARATOR === '\\';
+        $path = Path::create($isWindows ? 'C:/var/WWW/app' : '/var/WWW/app');
+        $base = $isWindows ? 'C:/var/www' : '/var/www';
+
+        $result = $path->tryRelative($base);
+
+        Assert::notNull($result);
+        if ($isWindows) {
+            Assert::same((string) $result, 'app', 'On Windows, segment comparison is case-insensitive');
+        } else {
+            Assert::same((string) $result, '../WWW/app', 'On Unix, segment comparison is case-sensitive');
+        }
+    }
+
+    public function testTryRelativeResultJoinedBackToBaseGivesOriginalPath(): void
+    {
+        $isWindows = DIRECTORY_SEPARATOR === '\\';
+        $base = Path::create($isWindows ? 'C:/var/www/app/src' : '/var/www/app/src');
+        $path = Path::create($isWindows ? 'C:/var/log/nginx/error.log' : '/var/log/nginx/error.log');
+
+        $result = $path->tryRelative($base);
+
+        Assert::notNull($result);
+        Assert::same((string) $base->join($result), (string) $path);
+    }
+
 }

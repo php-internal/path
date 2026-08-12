@@ -273,6 +273,53 @@ final class Path implements \Stringable
     }
 
     /**
+     * Try to compute this path relative to the given base directory.
+     *
+     * The result may traverse upwards (`../..`) when the path lies outside the base.
+     *
+     * Edge cases:
+     * - If this path is relative: returns $this as is. A Path carries no base of its own,
+     *   so an already relative path is considered the answer.
+     * - If $base is relative: it is resolved against the current working directory first.
+     * - Returns null when a relative path cannot be built at all: the paths are rooted
+     *   differently (different Windows drive letters, or a drive path vs a Unix-style root).
+     *
+     * Segment comparison is case-insensitive on Windows and case-sensitive on Unix.
+     *
+     * @param self|non-empty-string $base Base directory to compute the relative path against.
+     *
+     * @throws \RuntimeException If current working directory cannot be determined.
+     */
+    public function tryRelative(self|string $base): ?self
+    {
+        if ($this->isRelative()) {
+            return $this;
+        }
+
+        $thisParts = self::segments($this->path);
+        $baseParts = self::segments(self::create($base)->absolute()->path);
+
+        // Roots must match: '' (Unix) or a drive letter like 'C:'
+        if (!self::sameSegment($thisParts[0], $baseParts[0])) {
+            return null;
+        }
+
+        // Skip the common prefix
+        $common = 1;
+        $max = \min(\count($thisParts), \count($baseParts));
+        while ($common < $max && self::sameSegment($thisParts[$common], $baseParts[$common])) {
+            ++$common;
+        }
+
+        $parts = [
+            ...\array_fill(0, \count($baseParts) - $common, '..'),
+            ...\array_slice($thisParts, $common),
+        ];
+
+        return self::create($parts === [] ? '.' : \implode(self::DS, $parts));
+    }
+
+    /**
      * Match the path against a pattern using shell wildcard pattern matching.
      *
      * Both the path and pattern are converted to absolute paths before matching.
@@ -306,6 +353,41 @@ final class Path implements \Stringable
     public function __toString(): string
     {
         return $this->path;
+    }
+
+    /**
+     * Split an absolute normalized path into segments.
+     *
+     * The first segment is the root: an empty string for Unix-style paths
+     * or a drive letter like `C:` for Windows-style paths.
+     * Bare `.` segments (as in the root path `/.`) are dropped.
+     *
+     * @param non-empty-string $path An absolute normalized path.
+     * @return non-empty-list<string>
+     *
+     * @pure
+     */
+    private static function segments(string $path): array
+    {
+        $parts = \array_values(\array_filter(
+            \explode(self::DS, $path),
+            static fn(string $part): bool => $part !== '.',
+        ));
+
+        return $parts === [] ? [''] : $parts;
+    }
+
+    /**
+     * Compare two path segments using OS-specific case sensitivity:
+     * case-insensitive on Windows, case-sensitive on Unix.
+     *
+     * @pure
+     */
+    private static function sameSegment(string $a, string $b): bool
+    {
+        return \DIRECTORY_SEPARATOR === '\\'
+            ? \strcasecmp($a, $b) === 0
+            : $a === $b;
     }
 
     /**
