@@ -28,4 +28,24 @@ jobs:
           manifest-file: resources/version.json
           target-branch: 1.x
 
+      # The Vibe Index badge rides along in the release pull request instead of
+      # landing on 1.x by itself: one badge commit per release rather than one
+      # per push. Checking the pull request branch out is what puts the commit
+      # there — the action pushes to whatever HEAD points at.
+      - name: 📦 Check out the release pull request branch
+        uses: actions/checkout@v6
+        if: ${{ steps.release.outputs.prs_created == 'true' }}
+        with:
+          # The score is read from the commit history; a shallow clone would
+          # score whatever slice of it the runner happened to fetch.
+          fetch-depth: 0
+          ref: ${{ fromJson(steps.release.outputs.pr).headBranchName }}
+
+      - name: ✨ Refresh the Vibe Index badge
+        uses: roxblnfk/action-vibe-index@v1
+        if: ${{ steps.release.outputs.prs_created == 'true' }}
+        with:
+          commit: true
+          push: true
+
 ...
