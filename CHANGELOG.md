@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.3.0](https://github.com/php-internal/path/compare/1.2.0...1.3.0) (2026-08-12)
+
+
+### Features
+
+* Add Path::isWithin() to check containment within a base directory ([3a8ca39](https://github.com/php-internal/path/commit/3a8ca39d03a8d183c50655bcb170216cbb67b68e))
+* Add Path::tryRelative() to compute a path relative to a base ([1d69465](https://github.com/php-internal/path/commit/1d69465ff88c5a966c72c529e601d29d0d4fdf4f))
+* Update PHP version requirement to &gt;=8.2 ([46d5597](https://github.com/php-internal/path/commit/46d559784bc9245e72d8615b2f3cfda32302a98e))
+
+
+### Bug Fixes
+
+* Update testo/testo version to ^0.10.17 in composer.json ([b4fc426](https://github.com/php-internal/path/commit/b4fc42647fff8447caf5a1e92a9069a3bafe9b9a))
+
+
+### Documentation
+
+* Describe tryRelative() and isWithin() in README ([d2bfe37](https://github.com/php-internal/path/commit/d2bfe37d3889dfc03df45154997c4f41d98bae67))
+
 ## [1.2.0](https://github.com/php-internal/path/compare/1.1.1...1.2.0) (2025-12-03)
 
 
