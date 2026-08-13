@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Internal\Path\Tests\Unit;
 
 use Internal\Path;
+use Internal\Path\Tests\Unit\Stub\ClaimingFileWrapper;
+use Internal\Path\Tests\Unit\Stub\DenyingFileWrapper;
 use Testo\Assert;
 use Testo\Codecov\Covers;
 use Testo\Core\Exception\SkipTest;
@@ -27,18 +29,37 @@ final class PathTest
         yield 'unix implicit relative' => ['./test', false];
         yield 'dot path' => ['.', false];
         yield 'double dot path' => ['..', false];
+        // The drive letter is only meaningful at the very start of the path.
+        yield 'drive letter in a later segment' => ['foo/c:', false];
+        yield 'drive letter inside a segment' => ['dir/x:name', false];
     }
 
     public static function providePathsForParent(): \Generator
     {
         yield ['.', '..'];
         yield ['..', '../..'];
+        yield ['../..', '../../..'];
         yield ['path/to/..', '.'];
         yield ['/home', '/.'];
+        yield ['/home/user', '/home'];
         yield ['C:/Users', 'C:/.'];
         yield ['C:/.', 'C:/.'];
         yield ['filename.txt', '.'];
         yield ['some/path/file.txt', 'some/path'];
+    }
+
+    /**
+     * Paths that are directories by definition, so `isDir()`/`isFile()` must answer from the path value
+     * alone, without consulting the filesystem.
+     */
+    public static function provideDirectoryShapedPaths(): \Generator
+    {
+        yield 'current dir' => ['.'];
+        yield 'parent dir' => ['..'];
+        // A path ending with a separator followed by `.` is a directory the same way `.` is. The only shape
+        // that reaches `isDir()`/`isFile()` in that form is a normalized drive root: `C:` becomes `C:/.`,
+        // because the drive letter is stripped before the segments are resolved and nothing is left to join.
+        yield 'normalized drive root' => ['C:'];
     }
 
     public static function providePathsForMatch(): \Generator
@@ -290,11 +311,60 @@ final class PathTest
         Assert::same((string) $path, 'test/path/mixed/separators/here');
     }
 
+    /**
+     * The per-segment cleanup inside `normalizePath()` only strips spaces, so non-space whitespace
+     * around the whole path is removed by the outer `trim()` alone.
+     */
+    public function testCreateTrimsSurroundingWhitespaceFromWholePath(): void
+    {
+        Assert::same((string) Path::create("\tsrc/app\t"), 'src/app');
+        Assert::same((string) Path::create("\nsrc/app\n"), 'src/app');
+        Assert::same((string) Path::create("\rsrc/app\r"), 'src/app');
+        Assert::same((string) Path::create("\x0Bsrc/app\x0B"), 'src/app');
+        Assert::same((string) Path::create("\0src/app\0"), 'src/app');
+    }
+
+    /**
+     * Each path segment is trimmed of surrounding spaces before being checked against `.`/`''`
+     * and appended to the result, independently of the whole-path trim applied earlier.
+     */
+    public function testCreateTrimsSpacesFromPathSegments(): void
+    {
+        Assert::same((string) Path::create('a/ b /c'), 'a/b/c');
+        Assert::same((string) Path::create('a/ /b'), 'a/b');
+    }
+
     public function testCreateRemovesMultipleSeparators(): void
     {
         $path = Path::create('test//path///extra//separators');
 
         Assert::same((string) $path, 'test/path/extra/separators');
+    }
+
+    /**
+     * The separator-collapsing `preg_replace()` answers `null` when PCRE itself fails, and the cast on its
+     * result is what turns that failure into an empty path — which the empty-path guard then resolves to the
+     * current directory. A `pcre.backtrack_limit` of `1` is the only lever that makes the branch observable:
+     * without the cast the `null` propagates into the next `string` parameter and raises a `TypeError`.
+     */
+    public function testCreateDegradesToCurrentDirectoryWhenSeparatorRegexFails(): void
+    {
+        $limit = \ini_get('pcre.backtrack_limit');
+        $limit === false and throw new SkipTest('Cannot read `pcre.backtrack_limit`');
+
+        try {
+            \ini_set('pcre.backtrack_limit', '1') === false
+                and throw new SkipTest('Cannot lower `pcre.backtrack_limit`');
+
+            $pcreFails = \preg_replace('~/{2,}~', '/', 'test//path') === null;
+            $result = $pcreFails ? (string) Path::create('test//path') : null;
+        } finally {
+            \ini_set('pcre.backtrack_limit', $limit);
+        }
+
+        $pcreFails or throw new SkipTest('A lowered `pcre.backtrack_limit` does not make `preg_replace()` fail');
+
+        Assert::same($result, '.', 'A failed separator normalization leaves an empty path, resolved to `.`');
     }
 
     public function testCreateResolvesCurrentDirectorySegments(): void
@@ -309,6 +379,18 @@ final class PathTest
         $path = Path::create('test/parent/../path');
 
         Assert::same((string) $path, 'test/path');
+    }
+
+    /**
+     * The drive-letter prefix is recognized at the very start of the path only: a `<letter>:` sequence in a
+     * later segment of an absolute Unix-style path is an ordinary segment, so the path keeps its `/` root
+     * instead of being rewritten into a drive-rooted one.
+     */
+    public function testCreateKeepsUnixRootWhenDriveLetterAppearsInLaterSegment(): void
+    {
+        Assert::same((string) Path::create('/foo/c:'), '/foo/c:');
+        Assert::same((string) Path::create('/foo/c:/bar'), '/foo/c:/bar');
+        Assert::same((string) Path::create('/dir/x:name'), '/dir/x:name');
     }
 
     public function testCreateThrowsExceptionForInvalidParentNavigation(): never
@@ -351,11 +433,12 @@ final class PathTest
     public function testJoinWithRelativePathObjects(): void
     {
         $path = Path::create('base/path');
-        $additionalPath = Path::create('additional/path');
+        $first = Path::create('additional/path');
+        $second = Path::create('more/segments');
 
-        $result = $path->join($additionalPath);
+        $result = $path->join($first, $second);
 
-        Assert::same((string) $result, 'base/path/additional/path');
+        Assert::same((string) $result, 'base/path/additional/path/more/segments');
     }
 
     public function testJoinWithAbsolutePathStringThrows(): never
@@ -525,6 +608,46 @@ final class PathTest
     }
 
     /**
+     * A directory-shaped path is a directory by definition, so `isDir()` must answer from the path value
+     * without consulting the filesystem. On a real filesystem `is_dir()` answers true for these paths on
+     * its own, hiding the rule, so the `file://` wrapper is swapped for one that denies every stat for
+     * the duration of the call.
+     */
+    #[DataProvider('provideDirectoryShapedPaths')]
+    public function testIsDirForDirectoryShapedPathIgnoresFilesystem(string $input): void
+    {
+        $path = Path::create($input);
+
+        $result = self::callWithFileWrapper(
+            DenyingFileWrapper::class,
+            static fn(): bool => !\is_dir((string) $path),
+            static fn(): bool => $path->isDir(),
+        );
+
+        Assert::true($result, "Path `$path` must be a directory even when the filesystem reports otherwise");
+    }
+
+    /**
+     * The complement of the three path-shape rules: a path that says nothing about being a directory must be
+     * decided by the filesystem. This directory exists on disk, is not `.` or `..`, and does not end with
+     * `/.`, so `is_dir()` is the only reason `isDir()` may answer true.
+     */
+    public function testIsDirForExistingDirectoryAsksFilesystem(): void
+    {
+        $path = Path::create(__DIR__);
+        $value = (string) $path;
+
+        Assert::false($value === '.', 'The fixture path must not be the current-dir shorthand');
+        Assert::false($value === '..', 'The fixture path must not be the parent-dir shorthand');
+        Assert::false(
+            \str_ends_with($value, '/.'),
+            'The fixture path must not end with a separator followed by `.`',
+        );
+
+        Assert::true($path->isDir(), 'An existing directory must be reported as a directory');
+    }
+
+    /**
      * Note: This test might have limitations depending on the environment.
      * It checks the expected behavior of isFile without requiring an actual file to exist.
      */
@@ -546,6 +669,27 @@ final class PathTest
         } finally {
             @\unlink($tempFile);
         }
+    }
+
+    /**
+     * Mirror image of {@see testIsDirForDirectoryShapedPathIgnoresFilesystem}: a directory-shaped path
+     * names a directory, so `isFile()` must answer false from the path value without consulting the
+     * filesystem. `is_file()` is false for these paths on a real filesystem, which hides the rule, so the
+     * `file://` wrapper is swapped for one that claims every path is a regular file for the duration of
+     * the call.
+     */
+    #[DataProvider('provideDirectoryShapedPaths')]
+    public function testIsFileForDirectoryShapedPathIgnoresFilesystem(string $input): void
+    {
+        $path = Path::create($input);
+
+        $result = self::callWithFileWrapper(
+            ClaimingFileWrapper::class,
+            static fn(): bool => \is_file((string) $path),
+            static fn(): bool => $path->isFile(),
+        );
+
+        Assert::false($result, "Path `$path` must never be a file even when the filesystem reports otherwise");
     }
 
     public function testAbsoluteForAlreadyAbsolutePath(): void
@@ -901,5 +1045,38 @@ final class PathTest
         } else {
             Assert::false($result, 'On Unix, segment comparison is case-sensitive');
         }
+    }
+
+    /**
+     * Runs `$call` while the built-in `file://` stream wrapper is replaced with `$wrapperClass`, restoring
+     * the wrapper afterwards. `$sanity` is evaluated first under the same substitution: it must answer true
+     * when the substitution is effective; otherwise the environment cannot observe the difference and the
+     * test is skipped.
+     *
+     * @param class-string $wrapperClass
+     * @param \Closure(): bool $sanity
+     * @param \Closure(): bool $call
+     */
+    private static function callWithFileWrapper(string $wrapperClass, \Closure $sanity, \Closure $call): bool
+    {
+        // The stub must be autoloaded up front: once `file://` is gone, the autoloader cannot read files.
+        \class_exists($wrapperClass) or throw new \LogicException('Stub wrapper is not autoloadable');
+
+        \stream_wrapper_unregister('file');
+
+        try {
+            \stream_wrapper_register('file', $wrapperClass);
+            \clearstatcache(true);
+            $effective = $sanity();
+            \clearstatcache(true);
+            $result = $call();
+        } finally {
+            \stream_wrapper_restore('file');
+            \clearstatcache(true);
+        }
+
+        $effective or throw new SkipTest('Overriding the `file://` wrapper does not affect the filesystem probe here');
+
+        return $result;
     }
 }
