@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.0](https://github.com/php-internal/path/compare/1.3.0...1.4.0) (2026-09-08)
+
+
+### Features
+
+* downgrade min PHP version requirement to &gt;=8.1 and fix cs-fix.yml syntax ([3cd4b58](https://github.com/php-internal/path/commit/3cd4b58a17b39307f3549c715c9047ffde32a68d))
+
+
+### Documentation
+
+* Add the Vibe Index badge placeholder to README ([9f33e39](https://github.com/php-internal/path/commit/9f33e39c1d5fbfa9a68e60e16d9af10961ef9449))
+
 ## [1.3.0](https://github.com/php-internal/path/compare/1.2.0...1.3.0) (2026-08-12)
 
 
