@@ -58,13 +58,11 @@ jobs:
         with:
           dependency-versions: ${{ matrix.dependencies }}
 
-      # The library targets 8.1, but its dev tooling is written for 8.2+. Drop the tools the suite
-      # does not need (linters, mutation testing, the skills plugin), then the downgrade action resolves the
-      # rest as if on 8.1 (so Composer picks 8.1-compatible versions) and downgrades what testo and
-      # friends have no 8.1 version for.
+      # The dev tooling (linters, mutation testing) targets 8.2+ and isn't needed to run the suite;
+      # dropping it keeps the 8.1 downgrade surface small.
       - name: 🧹 Slim dev tooling for the PHP 8.1 leg
         if: matrix.php-version == '8.1'
-        run: composer remove --dev vimeo/psalm spiral/code-style roxblnfk/unpoly buggregator/trap testo/bridge-infection llm/skills --no-update --no-interaction
+        run: composer remove --dev vimeo/psalm spiral/code-style buggregator/trap testo/bridge-infection --no-update --no-interaction
 
       - name: 📥 Install and downgrade for PHP 8.1
         if: matrix.php-version == '8.1'
