@@ -47,22 +47,15 @@ jobs:
       - name: 🤖 Validate composer.json and composer.lock
         run: composer validate --ansi --strict
 
-      # Infection is dev-only and requires PHP >= 8.3, which breaks installation
-      # on the 8.2 matrix leg. It is not needed to run the test suite.
+      # Remove unused libs
       - name: 🧹 Remove Infection (incompatible with PHP 8.2)
-        run: composer remove --dev infection/infection --no-update --no-interaction
+        run: composer remove --dev infection/infection vimeo/psalm spiral/code-style buggregator/trap testo/bridge-infection --no-update --no-interaction
 
       - name: 📥 Install dependencies with composer
         if: matrix.php-version != '8.1'
         uses: ramsey/composer-install@v3
         with:
           dependency-versions: ${{ matrix.dependencies }}
-
-      # The dev tooling (linters, mutation testing) targets 8.2+ and isn't needed to run the suite;
-      # dropping it keeps the 8.1 downgrade surface small.
-      - name: 🧹 Slim dev tooling for the PHP 8.1 leg
-        if: matrix.php-version == '8.1'
-        run: composer remove --dev vimeo/psalm spiral/code-style buggregator/trap testo/bridge-infection --no-update --no-interaction
 
       - name: 📥 Install and downgrade for PHP 8.1
         if: matrix.php-version == '8.1'
@@ -73,8 +66,6 @@ jobs:
           # Downgrade the test harness (which uses 8.2+ syntax) and the testo config, but not src:
           # the shipped library must be exercised on 8.1 as written.
           paths: tests testo.php
-          # testo ships intentionally unparseable IDE stubs; they are not real code to downgrade.
-          skip: '*/resources/stubs/*'
 
       - name: 🧪 Run tests
         run: composer test
