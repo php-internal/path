@@ -12,7 +12,7 @@ on:  # yamllint disable-line rule:truthy
 
 jobs:
   testing:
-    timeout-minutes: 4
+    timeout-minutes: 15
     runs-on: ${{ matrix.os }}
     env:
       COMPOSER_ROOT_VERSION: '1.x-dev'
@@ -58,20 +58,20 @@ jobs:
         with:
           dependency-versions: ${{ matrix.dependencies }}
 
-      # The library targets 8.1, but its dev tooling — testo above all — is written for 8.2+.
-      # Drop the tools the suite does not need, then install-php resolves the rest as if on 8.1
-      # (so Composer picks 8.1-compatible versions) and downgrades whatever has no such version.
+      # The library targets 8.1, but its dev tooling is written for 8.2+. Drop the tools the suite
+      # does not need (linters, mutation testing, the skills plugin), then install-php resolves the
+      # rest as if on 8.1 (so Composer picks 8.1-compatible versions) and downgrades what testo and
+      # friends have no 8.1 version for.
       - name: 🧹 Slim dev tooling for the PHP 8.1 leg
         if: matrix.php-version == '8.1'
-        run: composer remove --dev vimeo/psalm spiral/code-style roxblnfk/unpoly buggregator/trap testo/bridge-infection --no-update --no-interaction
+        run: composer remove --dev vimeo/psalm spiral/code-style roxblnfk/unpoly buggregator/trap testo/bridge-infection llm/skills --no-update --no-interaction
 
       - name: 📥 Install and downgrade for PHP 8.1
         if: matrix.php-version == '8.1'
         uses: php-internal/actions/install-php@v1
         with:
           php-version: '8.1'
-          dependency-versions: lowest
-          paths: testo.php
+          dependency-versions: ${{ matrix.dependencies }}
 
       - name: 🧪 Run tests
         run: composer test
