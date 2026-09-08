@@ -72,6 +72,9 @@ jobs:
         with:
           php-version: '8.1'
           dependency-versions: ${{ matrix.dependencies }}
+          # Downgrade the test harness (which uses 8.2+ syntax) and the testo config, but not src:
+          # the shipped library must be exercised on 8.1 as written.
+          paths: tests testo.php
           # testo ships intentionally unparseable IDE stubs; they are not real code to downgrade.
           skip: '*/resources/stubs/*'
 
