@@ -59,7 +59,7 @@ jobs:
           dependency-versions: ${{ matrix.dependencies }}
 
       # The library targets 8.1, but its dev tooling is written for 8.2+. Drop the tools the suite
-      # does not need (linters, mutation testing, the skills plugin), then install-php resolves the
+      # does not need (linters, mutation testing, the skills plugin), then the downgrade action resolves the
       # rest as if on 8.1 (so Composer picks 8.1-compatible versions) and downgrades what testo and
       # friends have no 8.1 version for.
       - name: 🧹 Slim dev tooling for the PHP 8.1 leg
@@ -68,7 +68,7 @@ jobs:
 
       - name: 📥 Install and downgrade for PHP 8.1
         if: matrix.php-version == '8.1'
-        uses: php-internal/actions/install-php@v1
+        uses: php-internal/actions/downgrade@v1
         with:
           php-version: '8.1'
           dependency-versions: ${{ matrix.dependencies }}
