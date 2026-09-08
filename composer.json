@@ -15,7 +15,7 @@
     ],
     "authors": [
         {
-            "name": "Aleksei Gagarin (roxblnfk)",
+            "name": "Aleksei Gagarin",
             "homepage": "https://github.com/roxblnfk"
         }
     ],
@@ -26,7 +26,7 @@
         }
     ],
     "require": {
-        "php": ">=8.2"
+        "php": ">=8.1"
     },
     "require-dev": {
         "buggregator/trap": "^1.15",
