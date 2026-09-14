@@ -12,7 +12,7 @@ on:  # yamllint disable-line rule:truthy
 
 jobs:
   testing:
-    timeout-minutes: 4
+    timeout-minutes: 15
     runs-on: ${{ matrix.os }}
     env:
       COMPOSER_ROOT_VERSION: '1.x-dev'
@@ -25,6 +25,7 @@ jobs:
         os:
           - ubuntu-latest
         php-version:
+          - '8.1'
           - '8.2'
           - '8.3'
           - '8.4'
@@ -46,15 +47,25 @@ jobs:
       - name: 🤖 Validate composer.json and composer.lock
         run: composer validate --ansi --strict
 
-      # Infection is dev-only and requires PHP >= 8.3, which breaks installation
-      # on the 8.2 matrix leg. It is not needed to run the test suite.
+      # Remove unused libs
       - name: 🧹 Remove Infection (incompatible with PHP 8.2)
-        run: composer remove --dev infection/infection --no-update --no-interaction
+        run: composer remove --dev infection/infection vimeo/psalm spiral/code-style buggregator/trap testo/bridge-infection --no-update --no-interaction
 
       - name: 📥 Install dependencies with composer
+        if: matrix.php-version != '8.1'
         uses: ramsey/composer-install@v3
         with:
           dependency-versions: ${{ matrix.dependencies }}
+
+      - name: 📥 Install and downgrade for PHP 8.1
+        if: matrix.php-version == '8.1'
+        uses: php-internal/actions/downgrade@v1
+        with:
+          php-version: '8.1'
+          dependency-versions: ${{ matrix.dependencies }}
+          # Downgrade the test harness (which uses 8.2+ syntax) and the testo config, but not src:
+          # the shipped library must be exercised on 8.1 as written.
+          paths: tests testo.php
 
       - name: 🧪 Run tests
         run: composer test
